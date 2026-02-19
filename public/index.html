@@ -896,16 +896,39 @@
                 return;
             }
 
+            // Bugünü al ve saat farklarını sıfırla (sadece tarihi karşılaştırmak için)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
             exams.forEach(exam => {
                 const date = new Date(exam.date);
                 const day = date.getDate();
                 const month = date.toLocaleDateString('tr-TR', { month: 'short' }).toUpperCase();
                 const availableQuota = exam.quota - (exam.soldCount || 0);
 
+                // TARİH VE KONTENJAN KONTROLLERİ
+                const isPast = date < today; // Sınav tarihi bugünden küçük mü?
+                const isFull = availableQuota <= 0; // Kontenjan doldu mu?
+
+                let buttonHtml = `<button class="btn-apply" onclick="window.location.href='/basvuru.html?id=${exam._id}'">Randevu Al</button>`;
+                let cardOpacity = "1";
+                let dateBadgeStyle = "";
+
+                // Eğer sınav geçmişteyse
+                if (isPast) {
+                    buttonHtml = `<button class="btn-apply" style="background: #e2e8f0; color: #64748b; cursor: not-allowed; box-shadow: none;" disabled>Süresi Doldu</button>`;
+                    cardOpacity = "0.55"; // Kartı hafif soluklaştır
+                    dateBadgeStyle = "background: #f1f5f9; border-color: #e2e8f0; color: #94a3b8;"; // Tarihi gri yap
+                } 
+                // Eğer sınav geçmemiş ama kontenjan dolmuşsa
+                else if (isFull) {
+                    buttonHtml = `<button class="btn-apply" style="background: #ef4444; color: white; cursor: not-allowed; box-shadow: none;" disabled>Kontenjan Dolu</button>`;
+                }
+
                 container.innerHTML += `
-                    <div class="exam-card">
+                    <div class="exam-card" style="opacity: ${cardOpacity}; transition: all 0.3s;">
                         <div style="display: flex; gap: 1.5rem; align-items: center; width: 100%;">
-                            <div class="date-badge">
+                            <div class="date-badge" style="${dateBadgeStyle}">
                                 <span class="date-day">${day}</span>
                                 <span class="date-month">${month}</span>
                             </div>
@@ -917,13 +940,13 @@
                                     </span>
                                     <span class="badge badge-city"><i class="fa-solid fa-location-dot text-red-500"></i> ${exam.city}</span>
                                     <span class="badge badge-level"><i class="fa-solid fa-layer-group text-blue-500"></i> ${exam.level}</span>
-                                    <span class="badge badge-quota"><i class="fa-solid fa-user-group text-green-500"></i> Boş Yer: ${availableQuota}</span>
+                                    <span class="badge badge-quota"><i class="fa-solid fa-user-group ${isPast || isFull ? 'text-slate-400' : 'text-green-500'}"></i> Boş Yer: ${availableQuota}</span>
                                 </div>
                             </div>
                         </div>
                         <div class="price-area">
-                            <span class="price-value">${exam.price} €</span>
-                            <button class="btn-apply" onclick="window.location.href='/basvuru.html?id=${exam._id}'">Randevu Al</button>
+                            <span class="price-value" style="${isPast ? 'color: #94a3b8;' : ''}">${exam.price} €</span>
+                            ${buttonHtml}
                         </div>
                     </div>
                 `;

@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Almanca Sınav Merkezi | Süper Admin Paneli</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/tr.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 
+                            50: '#fef2f2', 100: '#fee2e2', 500: '#ef4444', 
+                            600: '#dc2626', 700: '#b91c1c', 800: '#991b1b', 900: '#7f1d1d' 
+                        },
+                        sidebar: '#0f172a',
+                        surface: '#f8fafc'
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+                        'card': '0 10px 30px -12px rgba(0, 0, 0, 0.1)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f1f5f9; font-feature-settings: "salt" on, "ss01" on; }
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .sidebar-item { border-left: 3px solid transparent; transition: all 0.2s ease; }
+        .sidebar-item:hover, .sidebar-item.active { 
+            background: linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            border-left-color: #dc2626; color: white; 
+        }
+
+        .stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.15); }
+
+        .btn-primary { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); transition: all 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -8px rgba(220, 38, 38, 0.5); }
+
+        .btn-secondary { background: linear-gradient(135deg, #4b5563 0%, #374151 100%); transition: all 0.2s; }
+        .btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.3); }
+
+        .custom-checkbox {
+            appearance: none; -webkit-appearance: none; width: 1.2rem; height: 1.2rem;
+            border: 2px solid #cbd5e1; border-radius: 0.375rem; background-color: white;
+            cursor: pointer; transition: all 0.15s; position: relative;
+        }
+        .custom-checkbox:checked { background-color: #dc2626; border-color: #dc2626; }
+        .custom-checkbox:checked::after {
+            content: "✓"; color: white; font-size: 0.9rem; position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold;
+        }
+
+        tbody tr { transition: background-color 0.15s; }
+        .swal2-popup.modern-modal { border-radius: 24px; padding: 2rem; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <div id="loginOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md">
+        <div class="bg-white/95 backdrop-blur-sm p-10 rounded-3xl shadow-2xl w-full max-w-md text-center border border-white/20">
+            <div class="w-20 h-20 bg-gradient-to-br from-brand-500 to-brand-700 text-white rounded-2xl flex items-center justify-center text-3xl mx-auto mb-6 shadow-lg shadow-brand-500/30 rotate-3 transform hover:rotate-0 transition-transform">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <h2 class="text-3xl font-bold mb-2 text-slate-900">Süper Admin</h2>
+            <p class="text-slate-500 mb-8">Berliner Merkezi Yönetim Paneli</p>
+            <form onsubmit="event.preventDefault(); checkLogin();">
+                <div class="relative mb-6">
+                    <i class="fa-solid fa-lock absolute left-4 top-4 text-slate-400"></i>
+                    <input type="password" id="adminPassword" placeholder="Sistem Şifresi" required
+                           class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none transition font-medium bg-white/80 text-center tracking-[0.2em]">
+                </div>
+                <button type="submit" class="btn-primary w-full text-white font-bold py-3.5 rounded-xl transition shadow-lg">
+                    Sistemi Aç
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <aside class="w-72 bg-sidebar text-slate-400 flex flex-col shadow-2xl z-20 hidden md:flex">
+            <div class="p-6 flex items-center gap-3 text-white font-bold text-xl border-b border-slate-800/50">
+                <div class="w-8 h-8 bg-gradient-to-br from-brand-600 to-brand-800 rounded-lg flex items-center justify-center text-xs shadow-lg shadow-brand-500/30">BA</div>
+                <span class="tracking-tight">Sınav Merkezi</span>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <p class="text-[10px] font-bold text-slate-600 uppercase tracking-wider px-4 mb-2 mt-4">Analiz</p>
+                <a href="#" onclick="switchTab('dashboard', this)" class="sidebar-item active flex items-center px-4 py-3 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-chart-pie w-6 text-lg"></i> Genel Bakış
+                </a>
+                
+                <p class="text-[10px] font-bold text-slate-600 uppercase tracking-wider px-4 mb-2 mt-6">Yönetim</p>
+                <a href="#" onclick="switchTab('candidates', this)" class="sidebar-item flex items-center px-4 py-3 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-user-group w-6 text-lg"></i> Aday Listesi
+                </a>
+                <a href="#" onclick="switchTab('exams', this)" class="sidebar-item flex items-center px-4 py-3 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-calendar-check w-6 text-lg"></i> Sınav Yönetimi
+                </a>
+                <a href="#" onclick="switchTab('accounting', this)" class="sidebar-item flex items-center px-4 py-3 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-wallet w-6 text-lg"></i> Muhasebe & Finans
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-slate-800/50">
+                <button onclick="logout()" class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all">
+                    <i class="fa-solid fa-power-off mr-2"></i> Güvenli Çıkış
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-surface">
+            <header class="h-16 bg-white/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-8 z-10 shadow-soft">
+                <div class="flex items-center gap-4">
+                    <h2 class="text-lg font-bold text-slate-800" id="pageTitle">Genel Bakış</h2>
+                    <span class="px-2 py-1 bg-slate-100 text-xs font-semibold rounded text-slate-500 border border-slate-200" id="currentDate"></span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-bold text-slate-700">Yönetici</p>
+                        <p class="text-xs text-brand-600 font-medium">Tam Yetkili (Süper)</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white flex items-center justify-center font-bold shadow-md">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-6 md:p-8 relative">
+                
+                <div id="view-dashboard" class="page-section fade-in space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="bg-white p-6 rounded-2xl shadow-card stat-card border border-slate-100">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Toplam Kayıt</p>
+                                    <h3 class="text-3xl font-bold text-slate-800 mt-1" id="d-total">...</h3>
+                                </div>
+                                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center text-lg"><i class="fa-solid fa-users"></i></div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-card stat-card border border-slate-100">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Bekleyen</p>
+                                    <h3 class="text-3xl font-bold text-amber-500 mt-1" id="d-pending">...</h3>
+                                </div>
+                                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center text-lg"><i class="fa-regular fa-clock"></i></div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-card stat-card border border-slate-100">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Bugün</p>
+                                    <h3 class="text-3xl font-bold text-slate-800 mt-1" id="d-today">...</h3>
+                                </div>
+                                <div class="w-10 h-10 rounded-xl bg-green-50 text-green-500 flex items-center justify-center text-lg"><i class="fa-solid fa-calendar-day"></i></div>
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-br from-brand-600 to-brand-800 p-6 rounded-2xl shadow-card text-white stat-card relative overflow-hidden">
+                            <i class="fa-solid fa-chart-line absolute right-[-20px] bottom-[-20px] text-8xl opacity-10"></i>
+                            <div class="relative z-10">
+                                <p class="text-brand-100 text-xs font-semibold uppercase tracking-wider">Tahmini Ciro</p>
+                                <h3 class="text-3xl font-bold mt-1" id="d-revenue">...</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-2xl shadow-card lg:col-span-2 border border-slate-100">
+                            <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="fa-solid fa-chart-area text-brand-600"></i> Başvuru Trendi (Son 14 Gün)</h3>
+                            <div class="h-64"><canvas id="trendChart"></canvas></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
+                            <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-brand-600"></i> Son İşlemler</h3>
+                            <div class="space-y-3" id="dashboard-recent-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-candidates" class="page-section hidden fade-in space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-card flex flex-wrap gap-4 items-center justify-between border border-slate-100">
+                        <div class="flex gap-4 flex-1">
+                            <div class="relative flex-1 max-w-md">
+                                <i class="fa-solid fa-search absolute left-4 top-3.5 text-slate-400"></i>
+                                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Aday, TC, Pasaport veya Tel..." 
+                                       class="w-full pl-12 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm text-slate-500 font-medium" id="selectedCandidatesCount">0 seçili</span>
+                            <button onclick="bulkDelete('candidate')" class="btn-secondary text-white px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-md opacity-90 hover:opacity-100">
+                                <i class="fa-solid fa-trash-can"></i> Toplu Sil
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-card overflow-hidden border border-slate-100">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                                    <tr>
+                                        <th class="px-4 py-4 w-10"><input type="checkbox" id="selectAllCandidates" class="custom-checkbox"></th>
+                                        <th class="px-6 py-4">Aday Profili & Pasaport</th>
+                                        <th class="px-6 py-4">Sınav Bilgisi</th>
+                                        <th class="px-6 py-4">İletişim</th>
+                                        <th class="px-6 py-4">Tutar</th>
+                                        <th class="px-6 py-4">Durum</th>
+                                        <th class="px-6 py-4 text-right">Yönetim</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="candidates-table" class="divide-y divide-slate-50 text-sm text-slate-600"></tbody>
+                            </table>
+                            <div id="empty-state" class="hidden py-12 text-center text-slate-400">Sonuç Bulunamadı</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-exams" class="page-section hidden fade-in space-y-6">
+                    <div class="flex justify-between items-center bg-white p-5 rounded-2xl shadow-card border border-slate-100">
+                        <div>
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-brand-600"></i> Aktif Sınav Takvimi</h3>
+                            <p class="text-xs text-slate-500 mt-1">Tüm şubelerden ve merkezden eklenen sınavlar.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm text-slate-500 font-medium" id="selectedExamsCount">0 seçili</span>
+                            <button onclick="bulkDelete('exam')" class="btn-secondary text-white px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-md opacity-90 hover:opacity-100">
+                                <i class="fa-solid fa-trash-can"></i> Toplu Sil
+                            </button>
+                            <button onclick="openAddExamModal()" class="btn-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-md">
+                                <i class="fa-solid fa-plus"></i> Merkez Sınav Ekle
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl shadow-card overflow-hidden border border-slate-100">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                                    <tr>
+                                        <th class="px-4 py-4 w-10"><input type="checkbox" id="selectAllExams" class="custom-checkbox"></th>
+                                        <th class="px-6 py-4">Sınav Adı</th>
+                                        <th class="px-6 py-4">Seviye</th>
+                                        <th class="px-6 py-4">Tarih / Şehir</th>
+                                        <th class="px-6 py-4">Kontenjan</th>
+                                        <th class="px-6 py-4">Ekleyen Kurum</th>
+                                        <th class="px-6 py-4 text-right">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exams-table" class="divide-y divide-slate-50 text-sm text-slate-600"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-accounting" class="page-section hidden fade-in space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="bg-white p-6 rounded-2xl shadow-card border-l-4 border-l-blue-500 stat-card">
+                            <p class="text-xs font-bold text-slate-400 uppercase">Onaylı Ciro</p>
+                            <h2 class="text-3xl font-bold text-slate-800 mt-2" id="acc-paid">0 €</h2>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-card border-l-4 border-l-purple-500 stat-card">
+                            <p class="text-xs font-bold text-slate-400 uppercase">Hizmet Bedeli (%5)</p>
+                            <h2 class="text-3xl font-bold text-purple-600 mt-2" id="acc-commission">0 €</h2>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-2xl shadow-card border-l-4 border-l-green-600 stat-card">
+                            <p class="text-xs font-bold text-green-700 uppercase">Net Kalan</p>
+                            <h2 class="text-3xl font-bold text-green-800 mt-2" id="acc-net">0 €</h2>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-card border-l-4 border-l-amber-400 stat-card">
+                            <p class="text-xs font-bold text-slate-400 uppercase">Bekleyen</p>
+                            <h2 class="text-3xl font-bold text-slate-800 mt-2" id="acc-pending">0 €</h2>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allOrders = [];
+        let allExams = [];
+        let trendChart = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            moment.locale('tr');
+            document.getElementById('currentDate').textContent = moment().format('D MMMM YYYY');
+        });
+        
+        function checkLogin() {
+            const pass = document.getElementById('adminPassword').value;
+            if(pass === "admin123") {
+                document.getElementById('loginOverlay').classList.add('hidden');
+                init();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Hatalı Şifre', customClass: { popup: 'modern-modal' } });
+            }
+        }
+
+        async function init() {
+            try {
+                const [ordersRes, examsRes] = await Promise.all([ fetch('/api/orders'), fetch('/api/exams') ]);
+                allOrders = await ordersRes.json();
+                allExams = await examsRes.json();
+                renderAll();
+                attachCheckboxEvents();
+            } catch (err) { console.error(err); }
+        }
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+            
+            const titles = { 'dashboard': 'Genel Bakış', 'candidates': 'Aday Listesi', 'exams': 'Sınav Yönetimi', 'accounting': 'Muhasebe & Finans' };
+            document.getElementById('pageTitle').textContent = titles[tab];
+        }
+
+        function renderAll() {
+            renderDashboard();
+            filterTable();
+            renderExamsTable();
+            renderAccounting();
+        }
+
+        function renderDashboard() {
+            document.getElementById('d-total').textContent = allOrders.length;
+            document.getElementById('d-pending').textContent = allOrders.filter(o => o.status === 'PENDING').length;
+            const todayCount = allOrders.filter(o => moment(o.createdAt).isSame(moment(), 'day')).length;
+            document.getElementById('d-today').textContent = todayCount;
+            const totalRev = allOrders.reduce((s,o) => s + (o.price||0), 0);
+            document.getElementById('d-revenue').textContent = totalRev + " €";
+
+            const listDiv = document.getElementById('dashboard-recent-list');
+            listDiv.innerHTML = allOrders.slice().reverse().slice(0, 5).map(o => `
+                <div class="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl hover:bg-slate-100 transition border border-slate-100">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-slate-800">${o.candidate.firstName} ${o.candidate.lastName}</h4>
+                        <p class="text-[10px] text-slate-400 font-medium">${o.examTitle}</p>
+                    </div>
+                    <div class="text-right font-bold text-sm text-brand-600">${o.price} €</div>
+                </div>
+            `).join('');
+
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if(trendChart) trendChart.destroy();
+            trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 14}, (_, i) => moment().subtract(13-i, 'days').format('D MMM')),
+                    datasets: [{ label: 'Kayıt', data: Array.from({length: 14}, (_, i) => allOrders.filter(o => moment(o.createdAt).isSame(moment().subtract(13-i, 'days'), 'day')).length), borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.05)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#dc2626' }]
+                },
+                options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [4, 4] } }, x: { grid: { display: false } } } }
+            });
+        }
+
+        function filterTable() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allOrders.filter(o => 
+                (o.candidate.firstName + ' ' + o.candidate.lastName).toLowerCase().includes(search) || 
+                o.candidate.identityNumber.includes(search) || 
+                (o.candidate.pass && o.candidate.pass.toLowerCase().includes(search))
+            );
+            renderCandidatesTable(filtered);
+        }
+
+        function renderCandidatesTable(data) {
+            const tbody = document.getElementById('candidates-table');
+            tbody.innerHTML = "";
+            if(data.length === 0) { 
+                document.getElementById('empty-state').classList.remove('hidden'); 
+                updateSelectedCount('candidate'); return; 
+            }
+            document.getElementById('empty-state').classList.add('hidden');
+
+            data.slice().reverse().forEach(o => {
+                const isPaid = o.status === 'PAID';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/80 group transition">
+                        <td class="px-4 py-4"><input type="checkbox" class="custom-checkbox candidate-checkbox" value="${o._id}"></td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center font-bold text-slate-600 shadow-sm border border-white">${o.candidate.firstName[0]}${o.candidate.lastName[0]}</div>
+                                <div>
+                                    <p class="font-bold text-slate-800">${o.candidate.firstName} ${o.candidate.lastName}</p>
+                                    <div class="flex gap-2 mt-0.5">
+                                        <span class="text-[10px] text-slate-400 font-mono">TC: ${o.candidate.identityNumber}</span>
+                                        <span class="text-[10px] text-brand-600 font-bold font-mono">PAS: ${o.candidate.pass || '-'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-xs">
+                            <p class="font-bold text-slate-700">${o.examTitle}</p>
+                            <p class="text-slate-400 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${moment(o.examDate).format('D MMM YYYY')}</p>
+                        </td>
+                        <td class="px-6 py-4 text-[11px] text-slate-500 space-y-1">
+                            <div><i class="fa-solid fa-phone mr-1 w-3"></i> ${o.candidate.phone}</div>
+                            <div><i class="fa-solid fa-envelope mr-1 w-3"></i> ${o.candidate.email}</div>
+                        </td>
+                        <td class="px-6 py-4 font-bold text-slate-700">${o.price} €</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 rounded-md text-[10px] font-bold ${isPaid ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}">
+                                ${isPaid ? 'Onaylandı' : 'Bekliyor'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end gap-1.5 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="actionDetail('${o._id}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition" title="Detay"><i class="fa-solid fa-eye"></i></button>
+                                ${!isPaid ? `<button onclick="actionApprove('${o._id}')" class="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition" title="Onayla"><i class="fa-solid fa-check"></i></button>` : ''}
+                                <button onclick="actionDelete('${o._id}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 hover:text-white transition" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            updateSelectedCount('candidate');
+        }
+
+        function renderExamsTable() {
+            const tbody = document.getElementById('exams-table');
+            tbody.innerHTML = "";
+            if(allExams.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">Henüz aktif sınav bulunmuyor.</td></tr>';
+                updateSelectedCount('exam'); return;
+            }
+
+            allExams.slice().reverse().forEach(e => {
+                const occupancyRate = e.quota > 0 ? (e.soldCount / e.quota) * 100 : 0;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/80 group transition">
+                        <td class="px-4 py-4"><input type="checkbox" class="custom-checkbox exam-checkbox" value="${e._id}"></td>
+                        <td class="px-6 py-4 font-bold text-slate-800">${e.title}</td>
+                        <td class="px-6 py-4"><span class="bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-blue-100">${e.level}</span></td>
+                        <td class="px-6 py-4 text-xs">
+                            <div class="font-semibold text-slate-700 mb-0.5"><i class="fa-regular fa-calendar mr-1"></i>${moment(e.date).format('D MMM YYYY')}</div>
+                            <div class="text-[10px] text-slate-400 uppercase tracking-wide"><i class="fa-solid fa-location-dot mr-1"></i>${e.city}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm font-medium">
+                            <div class="flex items-center gap-2">
+                                <div class="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                    <div class="h-full ${occupancyRate >= 100 ? 'bg-red-500' : 'bg-brand-500'}" style="width: ${occupancyRate}%"></div>
+                                </div>
+                                <span class="whitespace-nowrap"><span class="text-slate-800">${e.soldCount || 0}</span> <span class="text-slate-400 text-[10px]">/ ${e.quota}</span></span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1.5 rounded font-bold uppercase tracking-wider border border-slate-200">
+                                <i class="fa-solid fa-building-user mr-1 text-slate-400"></i>${e.addedBy || 'Merkez'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="actionDeleteExam('${e._id}')" class="w-8 h-8 ml-auto rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 hover:text-white transition opacity-100 lg:opacity-0 group-hover:opacity-100" title="Sınavı Sil">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            updateSelectedCount('exam');
+        }
+
+        async function openAddExamModal() {
+            const { value: formValues } = await Swal.fire({
+                title: '<h3 class="text-2xl font-bold text-slate-800 mb-2">Merkezden Sınav Ekle</h3>',
+                html: `
+                    <div class="space-y-4 text-left px-1">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sınav Adı</label>
+                            <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-file-signature"></i></div><input id="swal-title" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none text-sm text-slate-700"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Seviye</label>
+                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-layer-group"></i></div><select id="swal-level" class="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none text-sm text-slate-700 appearance-none cursor-pointer"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C1">C1</option></select><div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-chevron-down text-xs"></i></div></div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Şehir</label>
+                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-city"></i></div><input id="swal-city" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none text-sm text-slate-700"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tarih</label>
+                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-regular fa-calendar-check"></i></div><input id="swal-date" type="date" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none text-sm text-slate-700"></div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kontenjan</label>
+                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-users"></i></div><input id="swal-quota" type="number" min="1" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none text-sm text-slate-700"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-[2fr_1fr] gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Lokasyon Detayı</label>
+                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-map-location-dot"></i></div><input id="swal-location" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none text-sm text-slate-700"></div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fiyat (€)</label>
+                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-euro-sign"></i></div><input id="swal-price" type="number" min="0" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none font-bold text-sm text-brand-600"></div>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                width: 600, padding: '1em 2em 2em', customClass: { popup: 'modern-modal', actions: 'w-full grid grid-cols-2 gap-4 mt-6', confirmButton: 'btn-primary w-full text-white py-3.5 rounded-xl font-bold', cancelButton: 'w-full bg-slate-100 text-slate-600 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition' },
+                buttonsStyling: false, showCancelButton: true, confirmButtonText: 'Sınavı Kaydet', cancelButtonText: 'Vazgeç',
+                preConfirm: () => {
+                    const data = {
+                        title: document.getElementById('swal-title').value.trim(), level: document.getElementById('swal-level').value,
+                        city: document.getElementById('swal-city').value.trim(), locationDetails: document.getElementById('swal-location').value.trim(),
+                        date: document.getElementById('swal-date').value, quota: document.getElementById('swal-quota').value,
+                        price: document.getElementById('swal-price').value, addedBy: "Merkez"
+                    };
+                    if(!data.title || !data.city || !data.date || !data.price || !data.quota) { Swal.showValidationMessage('Lütfen zorunlu alanları doldurun!'); return false; }
+                    return data;
+                }
+            });
+
+            if (formValues) {
+                try {
+                    Swal.fire({ title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() }, customClass: { popup: 'modern-modal' } });
+                    const res = await fetch('/api/exams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formValues) });
+                    if(res.ok) { Swal.fire({ icon: 'success', title: 'Başarılı!', timer: 1500, showConfirmButton: false, customClass: { popup: 'modern-modal' } }); init(); } 
+                    else { throw new Error("Server error"); }
+                } catch (err) { Swal.fire({ icon: 'error', title: 'Hata', customClass: { popup: 'modern-modal' } }); }
+            }
+        }
+
+        function attachCheckboxEvents() {
+            ['selectAllCandidates', 'selectAllExams'].forEach((id, idx) => {
+                const el = document.getElementById(id);
+                if(el) el.addEventListener('change', e => {
+                    document.querySelectorAll(idx === 0 ? '.candidate-checkbox' : '.exam-checkbox').forEach(cb => cb.checked = e.target.checked);
+                    updateSelectedCount(idx === 0 ? 'candidate' : 'exam');
+                });
+            });
+
+            ['candidates-table', 'exams-table'].forEach((id, idx) => {
+                document.getElementById(id).addEventListener('change', e => {
+                    if(e.target.classList.contains(idx === 0 ? 'candidate-checkbox' : 'exam-checkbox')) {
+                        updateSelectedCount(idx === 0 ? 'candidate' : 'exam');
+                        updateSelectAll(idx === 0 ? 'candidate' : 'exam');
+                    }
+                });
+            });
+        }
+
+        function updateSelectedCount(type) {
+            let countSpan = document.getElementById(type === 'candidate' ? 'selectedCandidatesCount' : 'selectedExamsCount');
+            if(countSpan) countSpan.textContent = Array.from(document.querySelectorAll(type === 'candidate' ? '.candidate-checkbox' : '.exam-checkbox')).filter(cb => cb.checked).length + ' seçili';
+        }
+
+        function updateSelectAll(type) {
+            const checkboxes = document.querySelectorAll(type === 'candidate' ? '.candidate-checkbox' : '.exam-checkbox');
+            const selectAll = document.getElementById(type === 'candidate' ? 'selectAllCandidates' : 'selectAllExams');
+            if(!selectAll) return;
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        }
+
+        async function bulkDelete(type) {
+            const selectedIds = Array.from(document.querySelectorAll(type === 'candidate' ? '.candidate-checkbox' : '.exam-checkbox')).filter(cb => cb.checked).map(cb => cb.value);
+            if(selectedIds.length === 0) { Swal.fire({ icon: 'warning', title: 'Seçim Yapmadınız', customClass: { popup: 'modern-modal' } }); return; }
+
+            const confirm = await Swal.fire({
+                title: 'Toplu Silme', text: `${selectedIds.length} adet kaydı silmek üzeresiniz.`, icon: 'warning', showCancelButton: true,
+                confirmButtonColor: '#dc2626', cancelButtonColor: '#94a3b8', confirmButtonText: 'Evet, Sil', cancelButtonText: 'Vazgeç',
+                customClass: { popup: 'modern-modal', confirmButton: 'rounded-xl', cancelButton: 'rounded-xl' }
+            });
+            
+            if(confirm.isConfirmed) {
+                Swal.fire({ title: 'İşleniyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'modern-modal' } });
+                try {
+                    await Promise.all(selectedIds.map(id => fetch(`${type === 'candidate' ? '/api/orders' : '/api/exams'}/${id}`, { method: 'DELETE' })));
+                    Swal.fire({ icon: 'success', title: 'Silindi', timer: 1500, showConfirmButton: false, customClass: { popup: 'modern-modal' } });
+                    init(); 
+                } catch (error) { Swal.fire({ icon: 'error', title: 'Hata', customClass: { popup: 'modern-modal' } }); }
+            }
+        }
+
+        function actionDetail(id) {
+            const o = allOrders.find(x => x._id === id);
+            Swal.fire({
+                title: `<span class="text-xl font-bold text-slate-800">${o.candidate.firstName} ${o.candidate.lastName}</span>`,
+                html: `
+                    <div class="text-left bg-surface p-5 rounded-2xl text-sm border border-slate-200 mt-4">
+                        <div class="grid grid-cols-2 gap-4 mb-5">
+                            <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">TC Kimlik</p><p class="font-medium text-slate-700">${o.candidate.identityNumber}</p></div>
+                            <div><p class="text-[10px] text-brand-600 font-bold uppercase tracking-wider mb-1">Pasaport No</p><p class="font-bold text-brand-700 bg-brand-50 inline-block px-2 py-0.5 rounded border border-brand-100">${o.candidate.pass || 'Belirtilmedi'}</p></div>
+                        </div>
+                        <div class="mb-5"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">İletişim</p><p class="font-medium text-slate-700"><i class="fa-solid fa-phone text-slate-400 mr-1 w-4"></i>${o.candidate.phone}<br><i class="fa-solid fa-envelope text-slate-400 mr-1 w-4 mt-2"></i>${o.candidate.email}</p></div>
+                        <div class="mb-5"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Adres</p><p class="font-medium text-slate-700 leading-relaxed">${o.candidate.address}</p></div>
+                        <div class="border-t border-slate-200 pt-4 mt-2">
+                            <p class="font-bold text-brand-600 text-lg">${o.examTitle}</p>
+                            <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> ${o.examLocation}</p>
+                        </div>
+                    </div>
+                `,
+                confirmButtonColor: '#0f172a', confirmButtonText: 'Kapat', customClass: { popup: 'modern-modal', confirmButton: 'rounded-xl w-full mt-4 py-3' }
+            });
+        }
+
+        async function actionApprove(id) {
+            const res = await Swal.fire({ 
+                title: 'Ödeme Onayı', text: 'Bu başvuruyu ödendi olarak işaretlemek istiyor musunuz?', icon: 'question', showCancelButton: true,
+                confirmButtonColor: '#10b981', cancelButtonColor: '#94a3b8', confirmButtonText: 'Evet, Onayla', cancelButtonText: 'İptal',
+                customClass: { popup: 'modern-modal', confirmButton: 'rounded-xl', cancelButton: 'rounded-xl' }
+            });
+            if(res.isConfirmed) { await fetch(`/api/orders/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({status:'PAID'}) }); init(); }
+        }
+
+        async function actionDelete(id) {
+            const res = await Swal.fire({ 
+                title: 'Silinecek!', text: 'Aday kaydını silmek istediğinize emin misiniz?', icon: 'warning', showCancelButton: true,
+                confirmButtonColor: '#dc2626', cancelButtonColor: '#94a3b8', confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal',
+                customClass: { popup: 'modern-modal', confirmButton: 'rounded-xl', cancelButton: 'rounded-xl' }
+            });
+            if(res.isConfirmed) { await fetch(`/api/orders/${id}`, { method: 'DELETE' }); init(); }
+        }
+
+        async function actionDeleteExam(id) {
+            const res = await Swal.fire({ 
+                title: 'Sınav Silinecek!', text: "Bu sınavı kaldırmak istediğinize emin misiniz?", icon: 'warning', showCancelButton: true,
+                confirmButtonColor: '#dc2626', cancelButtonColor: '#94a3b8', confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal',
+                customClass: { popup: 'modern-modal', confirmButton: 'rounded-xl', cancelButton: 'rounded-xl' }
+            });
+            if(res.isConfirmed) {
+                try {
+                    await fetch(`/api/exams/${id}`, { method: 'DELETE' });
+                    Swal.fire({ icon: 'success', title: 'Silindi', showConfirmButton: false, timer: 1500, customClass: { popup: 'modern-modal' } });
+                    init();
+                } catch(e) { Swal.fire({ icon: 'error', title: 'Hata', customClass: { popup: 'modern-modal' } }); }
+            }
+        }
+
+        function renderAccounting() {
+            const paid = allOrders.filter(o => o.status === 'PAID');
+            const totalPaid = paid.reduce((s,o)=>s+(o.price||0), 0);
+            document.getElementById('acc-paid').textContent = totalPaid + " €";
+            document.getElementById('acc-commission').textContent = (totalPaid * 0.05).toFixed(2) + " €";
+            document.getElementById('acc-net').textContent = (totalPaid * 0.95).toFixed(2) + " €";
+            document.getElementById('acc-pending').textContent = allOrders.filter(o => o.status === 'PENDING').reduce((s,o)=>s+(o.price||0), 0) + " €";
+        }
+
+        function logout() { location.reload(); }
+    </script>
+</body>
+</html>
